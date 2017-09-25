@@ -50,11 +50,11 @@ UKF::UKF() {
   x_ << 0, 0, 0, 0, 0;
 
   // state error covariance matrix
-  P_ << 0.1, 0,   0,   0,           0,
-        0,   0.1, 0,   0,           0,
-        0,   0,   100, 0,           0,
-        0,   0,   0,   M_PI*M_PI/4, 0,
-        0,   0,   0,   0,           M_PI*M_PI/4;   
+  P_ << 1,   0,   0,    0,           0,
+        0,   1,   0,    0,           0,
+        0,   0,   1000, 0,           0,
+        0,   0,   0,    3*M_PI*M_PI, 0,
+        0,   0,   0,    0,           3*M_PI*M_PI;
   
   // initially only some default values are set...
   Xsig_pred_ = MatrixXd(5, 15);
@@ -71,9 +71,23 @@ UKF::UKF() {
   {
     weights_(i) = 0.5/(n_aug_+lambda_);
   }
+
+  // NIS values
+  nis_las_.reserve(500);
+  nis_rad_.reserve(500);
 }
 
-UKF::~UKF() {}
+UKF::~UKF() {
+  cout << "\nNIS LASER:\n";
+  for ( unsigned i=0; i<nis_las_.size()-1; i++ )
+    cout << nis_las_[i] << ", ";
+  cout << nis_las_.back() << "\n";
+
+  cout << "\nNIS RADAR:\n";
+  for ( unsigned i=0; i<nis_rad_.size()-1; i++ )
+    cout << nis_rad_[i] << ", ";
+  cout << nis_rad_.back() << "\n";
+}
 
 /**
  * @param {MeasurementPackage} meas_package The latest measurement data of
@@ -295,7 +309,8 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   x_ = x_ + K * z_diff;
   P_ = P_ - K*S*K.transpose();
 
-  // TODO: calculate the laser NIS
+  // calculate the laser NIS
+  nis_las_.push_back(z_diff.transpose() * S.inverse() * z_diff);
 }
 
 /**
@@ -376,5 +391,6 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   x_ = x_ + K * z_diff;
   P_ = P_ - K*S*K.transpose();
 
-  // TODO: calculate the radar NIS
+  // calculate the radar NIS
+  nis_rad_.push_back(z_diff.transpose() * S.inverse() * z_diff);
 }
