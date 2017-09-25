@@ -68,10 +68,10 @@ public:
   double lambda_;
 
   ///* Laser NIS
-  std::vector<double> nis_las_;
+  double nis_las_;
 
   ///* Radar NIS
-  std::vector<double> nis_rad_;
+  double nis_rad_;
 
   /**
    * Constructor

@@ -1,6 +1,7 @@
 #include "ukf.h"
 #include "Eigen/Dense"
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 using Eigen::MatrixXd;
@@ -28,7 +29,7 @@ UKF::UKF() {
   std_a_ = 2.0;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = M_PI/8.0;
+  std_yawdd_ = M_PI/4.0;
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -50,11 +51,11 @@ UKF::UKF() {
   x_ << 0, 0, 0, 0, 0;
 
   // state error covariance matrix
-  P_ << 1,   0,   0,    0,           0,
-        0,   1,   0,    0,           0,
-        0,   0,   1000, 0,           0,
-        0,   0,   0,    3*M_PI*M_PI, 0,
-        0,   0,   0,    0,           3*M_PI*M_PI;
+  P_ << 0.1, 0,   0,   0,         0,
+        0,   0.1, 0,   0,         0,
+        0,   0,   100, 0,         0,
+        0,   0,   0,   M_PI*M_PI, 0,
+        0,   0,   0,   0,         M_PI*M_PI;
   
   // initially only some default values are set...
   Xsig_pred_ = MatrixXd(5, 15);
@@ -73,21 +74,17 @@ UKF::UKF() {
   }
 
   // NIS values
-  nis_las_.reserve(500);
-  nis_rad_.reserve(500);
+  nis_las_ = 0.0;
+  nis_rad_ = 0.0;
+
+  ofstream nis_las_file, nis_rad_file;
+  nis_las_file.open("nis_las_file.csv", ios::out | ios::trunc);
+  nis_las_file.close();
+  nis_rad_file.open("nis_rad_file.csv", ios::out | ios::trunc);
+  nis_rad_file.close();
 }
 
-UKF::~UKF() {
-  cout << "\nNIS LASER:\n";
-  for ( unsigned i=0; i<nis_las_.size()-1; i++ )
-    cout << nis_las_[i] << ", ";
-  cout << nis_las_.back() << "\n";
-
-  cout << "\nNIS RADAR:\n";
-  for ( unsigned i=0; i<nis_rad_.size()-1; i++ )
-    cout << nis_rad_[i] << ", ";
-  cout << nis_rad_.back() << "\n";
-}
+UKF::~UKF() {}
 
 /**
  * @param {MeasurementPackage} meas_package The latest measurement data of
@@ -310,7 +307,11 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   P_ = P_ - K*S*K.transpose();
 
   // calculate the laser NIS
-  nis_las_.push_back(z_diff.transpose() * S.inverse() * z_diff);
+  nis_las_ = z_diff.transpose() * S.inverse() * z_diff;
+  ofstream nis_las_file;
+  nis_las_file.open("nis_las_file.csv", ios::app);
+  nis_las_file << nis_las_ << ", ";
+  nis_las_file.close();
 }
 
 /**
@@ -392,5 +393,9 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   P_ = P_ - K*S*K.transpose();
 
   // calculate the radar NIS
-  nis_rad_.push_back(z_diff.transpose() * S.inverse() * z_diff);
+  nis_rad_ = z_diff.transpose() * S.inverse() * z_diff;
+  ofstream nis_rad_file;
+  nis_rad_file.open("nis_rad_file.csv", ios::app);
+  nis_rad_file << nis_rad_ << ", ";
+  nis_rad_file.close();
 }
